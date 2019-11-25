@@ -1,17 +1,32 @@
 #include <fstream>
+#include <regex>
+#include <vector>
+#include <sstream>
 #include <string>
 
 using namespace std;
 
+std::vector<std::string> split(const std::string &s, char delim) {
+    std::stringstream ss(s);
+    std::string item;
+    std::vector<std::string> elems;
+    while (std::getline(ss, item, delim)) {
+        elems.push_back(item);
+    }
+    return elems;
+}
+
 struct node // структура для представления узлов дерева
 {
-    int key;
+    string key;
+    string value;
     unsigned char height;
     node *left;
     node *right;
 
-    explicit node(int k) {
+    explicit node(string k, string val) {
         key = k;
+        value = val;
         left = right = nullptr;
         height = 1;
     }
@@ -67,14 +82,18 @@ node *balance(node *p) // балансировка узла p
     return p; // балансировка не нужна
 }
 
-node *insert(node *p, int k) // вставка ключа k в дерево с корнем p
+node *insert(node *p, string k, string v) // вставка ключа k в дерево с корнем p
 {
-    if (!p) return new node(k);
-    if (k == p->key) return balance(p);
+    if (!p) return new node(k, v);
+    if (k == p->key)
+    {
+        p->value = v;
+        return balance(p);
+    }
     if (k < p->key)
-        p->left = insert(p->left, k);
+        p->left = insert(p->left, k, v);
     else
-        p->right = insert(p->right, k);
+        p->right = insert(p->right, k, v);
     return balance(p);
 }
 
@@ -91,7 +110,7 @@ node *removemin(node *p) // удаление узла с минимальным 
     return balance(p);
 }
 
-node *remove(node *p, int k) // удаление ключа k из дерева p
+node *remove(node *p, string k) // удаление ключа k из дерева p
 {
     if (!p) return nullptr;
     if (k < p->key)
@@ -112,75 +131,88 @@ node *remove(node *p, int k) // удаление ключа k из дерева 
     return balance(p);
 }
 
-bool isIn(node *p, int k) //поиск узла с ключем k из дерева p
+string isIn(node *p, string k) //поиск узла с ключем k из дерева p
 {
-    if (p->key == k) return true;
+    if (p->key == k) return p->value + "\n";
     if (p->key < k) {
         if (p->right != nullptr)
             return isIn(p->right, k);
         else
-            return false;
+            return "none\n";
     }
     if (p->key > k) {
         if (p->left != nullptr)
             return isIn(p->left, k);
         else
-            return false;
+            return "none\n";
     }
 
-    return false;
+    return "none\n";
 }
 struct tree
 {
     node* root;
 };
+
+
 int main() {
     ifstream fin;
     ofstream fout;
-    fin.open("set.in");
-    fout.open("set.out");
+    fin.open("map.in");
+    fout.open("map.out");
     ios_base::sync_with_stdio(false);
 
     string command;
-    int val;
-    while ((command != "insert") && !fin.eof()) {
+    string key;
+    string val;
+
+
+
+    while ((command != "put") && !fin.eof()) {
 
         string str;
         getline(fin, str);
-        if (str.length() < 5)continue;
-        command = str.substr(0, 6);
-        val = stoi(str.substr(6));
+        if (str.length() < 2) continue;
 
-        if (command == "exists")
-            fout << "false\n";
+        vector<string> results = split(str, ' ');
+        command = results[0];
+        key = results[1];
+        if(command == "put")
+            val = results[2];
+
+        if (command == "get")
+            fout << "none\n";
     }
 
     tree tr;
-    tr.root = new node(val);
+    tr.root = new node(key, val);
     node *r = tr.root;
     while (!fin.eof()) {
         string str;
         getline(fin, str);
-        if (str.length() < 5)continue;
-        command = str.substr(0, 6);
-        val = stoi(str.substr(6));
 
+        if (str == "") continue;
+        vector<string> results = split(str, ' ');
+        command = results[0];
+        key = results[1];
+        if(command == "put")
+            val = results[2];
 
-        if (command == "insert") {
+        if (command == "put") {
             if (r == nullptr)
-                r = new node(val);
+                r = new node(key, val);
             else
-               r = insert(r, val);
+                r = insert(r, key, val);
         }
         if (command == "delete") {
             if (r != nullptr)
-                r = remove(r, val);
+                r = remove(r, key);
         }
-        if (command == "exists")
+        if (command == "get")
             if (r != nullptr)
-                fout << (isIn(r, val) ? "true\n" : "false\n");
+                fout << isIn(r, key);
             else
-                fout << "false\n";
+                fout << "none\n";
     }
 
     fin.close();
